@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00D4FF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="J.A.R.V.I.S. — Asistente de IA Personal">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%2306080F'/><text x='50' y='58' text-anchor='middle' font-size='28' font-weight='bold' fill='%2300D4FF'>J</text></svg>">
 <title>J.A.R.V.I.S.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -203,6 +209,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <button class="sb" onclick="showSettings()" title="Configuración">⚙️</button>
     <button class="sb" onclick="nuevoChat()" title="Nuevo chat">➕</button>
     <div class="sfill"></div>
+    <button class="sb" id="binstall" title="Instalar JARVIS" onclick="installApp()" style="display:none">📲</button>
     <div style="font-size:8px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;writing-mode:vertical-rl;margin-bottom:8px;font-weight:600">J.A.R.V.I.S</div>
   </div>
 
@@ -603,6 +610,31 @@ function dr(time){
   requestAnimationFrame(dr);
 }
 requestAnimationFrame(dr);
+
+// ─── PWA INSTALL ───
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('binstall').style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  document.getElementById('binstall').style.display = 'none';
+  toast('JARVIS instalado ✓');
+});
+function installApp() {
+  if (!deferredPrompt) { toast('Abra desde Chrome → Menú ⋮ → Instalar'); return; }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') toast('Instalando JARVIS...');
+    deferredPrompt = null;
+  });
+}
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 
 // ─── INIT ───
 renderHistory();renderChat();

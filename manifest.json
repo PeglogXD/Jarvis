@@ -1,0 +1,18 @@
+{
+  "name": "J.A.R.V.I.S. — Asistente de IA Personal",
+  "short_name": "JARVIS",
+  "description": "Asistente de inteligencia artificial personal con chat, voz y archivos.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#06080F",
+  "theme_color": "#00D4FF",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%2306080F'/><circle cx='256' cy='240' r='120' fill='none' stroke='%2300D4FF' stroke-width='3' opacity='.3'/><circle cx='256' cy='240' r='80' fill='none' stroke='%2300D4FF' stroke-width='2' opacity='.5'/><circle cx='256' cy='240' r='40' fill='%2300D4FF' opacity='.15'/><text x='256' y='370' text-anchor='middle' font-family='system-ui' font-weight='700' font-size='48' fill='%2300D4FF'>J.A.R.V.I.S.</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
