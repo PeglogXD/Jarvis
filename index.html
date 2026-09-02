@@ -492,10 +492,23 @@ async function streamAI(bub,chat,ft){
     msgs.push({role:m.role==='user'?'user':'assistant',content:m.content});
   }
 
-  if(S.provider==='groq') return streamGroq(bub,msgs);
-  if(S.provider==='openrouter') return streamOpenRouter(bub,msgs);
-  if(S.provider==='nvidia') return streamNvidia(bub,msgs);
-  throw new Error('Proveedor no configurado');
+  // Intentar proveedor actual, fallback automático si falla
+  const order = S.provider === 'groq' ? ['groq','openrouter','nvidia']
+    : S.provider === 'nvidia' ? ['nvidia','groq','openrouter']
+    : ['openrouter','groq','nvidia'];
+  let lastErr = null;
+  for (const prov of order) {
+    try {
+      if (prov === 'groq' && S.groqKey) { await streamGroq(bub, msgs); return; }
+      if (prov === 'openrouter' && S.orKey) { await streamOpenRouter(bub, msgs); return; }
+      if (prov === 'nvidia' && S.nvKey) { await streamNvidia(bub, msgs); return; }
+    } catch(e) {
+      lastErr = e;
+      console.warn('Fallback: ' + prov + ' fallo — ' + e.message);
+      bub.textContent = '';
+    }
+  }
+  throw lastErr || new Error('Ningún proveedor configurado');
 }
 
 async function streamGroq(bub,msgs){
