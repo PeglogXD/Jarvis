@@ -1,0 +1,25 @@
+# Claves y secretos — NUNCA subir
+.env
+*.env
+
+# Archivos generados por Jarvis
+voz_*.mp3
+__pycache__/
+*.pyc
+*.pyo
+
+# Historial y logs
+historial.json
+errores.log
+listener.log
+listener.lock
+memoria.json
+
+# Archivos de sistema
+Thumbs.db
+.DS_Store
+*.swp
+*~
+
+# Backups
+*.bak
