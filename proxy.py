@@ -1,27 +1,30 @@
 """
-J.A.R.V.I.S. — Proxy local para NVIDIA NIM API
+J.A.R.V.I.S. — Proxy local para NVIDIA NIM API (Streaming)
 Permite que JARVIS.html llame a NVIDIA NIM desde el navegador (CORS bypass).
 
 Uso:
   python proxy.py          (inicia en http://localhost:5050)
   Abre JARVIS.html en el navegador
-
-El HTML llama a http://localhost:5050/api/chat → este proxy lo reenvía a NVIDIA NIM.
 """
 import http.server
 import json
 import os
 import urllib.request
 import urllib.error
+import ssl
 
 PORT = 5050
 NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-API_KEY = os.getenv("NVIDIA_API_KEY", "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")
+API_KEY = os.getenv("NVIDIA_API_KEY", "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")
+
+# Skip SSL verification issues on some systems
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
 
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self):
-        """Handle CORS preflight."""
         self.send_response(200)
         self._cors_headers()
         self.end_headers()
@@ -36,7 +39,8 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             body = self.rfile.read(length)
             data = json.loads(body)
 
-            # Forward to NVIDIA NIM
+            is_stream = data.get("stream", False)
+
             req = urllib.request.Request(
                 NVIDIA_URL,
                 data=json.dumps(data).encode(),
@@ -47,14 +51,27 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
                 method="POST",
             )
 
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read().decode())
+            resp = urllib.request.urlopen(req, timeout=120, context=ctx)
 
-            self.send_response(200)
-            self._cors_headers()
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(result).encode())
+            if is_stream:
+                # Streaming: forward SSE chunks directly
+                self.send_response(200)
+                self._cors_headers()
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+
+                for chunk in iter(lambda: resp.read(1024), b""):
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+            else:
+                # Non-streaming: forward JSON response
+                result = json.loads(resp.read().decode())
+                self.send_response(200)
+                self._cors_headers()
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
 
         except urllib.error.HTTPError as e:
             err_body = e.read().decode() if e.fp else str(e)
@@ -83,7 +100,7 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
 if __name__ == "__main__":
     server = http.server.HTTPServer(("127.0.0.1", PORT), ProxyHandler)
     print(f"J.A.R.V.I.S. Proxy activo en http://localhost:{PORT}")
-    print(f"Abre JARVIS.html en tu navegador y conectará automáticamente.")
+    print(f"Streaming: ACTIVADO")
     print(f"Presiona Ctrl+C para detener.")
     try:
         server.serve_forever()

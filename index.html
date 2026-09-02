@@ -313,12 +313,12 @@ const L = JSON.parse(localStorage.getItem('j_chats') || '[]'); // [{id, title, m
 let activeChatId = localStorage.getItem('j_active') || null;
 
 const S = {
-  provider: localStorage.getItem('j_prov') || 'groq',
+  provider: localStorage.getItem('j_prov') || 'nvidia',
   groqKey: localStorage.getItem('j_gk') || '',
   groqModel: localStorage.getItem('j_gm') || 'llama-3.3-70b-versatile',
   orKey: localStorage.getItem('j_ok') || '',
   orModel: localStorage.getItem('j_om') || 'meta-llama/llama-3.3-70b-instruct:free',
-  nvKey: localStorage.getItem('j_nk') || '',
+  nvKey: localStorage.getItem('j_nk') || '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',
   nvModel: localStorage.getItem('j_nm') || 'nvidia/nemotron-3.5-lightning-30b-a3b',
   mode: localStorage.getItem('j_mode') || 'brief',
   rate: parseFloat(localStorage.getItem('j_rate') || '0.85'),
