@@ -128,6 +128,7 @@ NVIDIA_SKILL_KEYWORDS = {
     "cudf": ["cudf", "gpu dataframe", "rapids", "pandas gpu", "acelerar pandas", "gpu data"],
     "cuda": ["cuda", "gpu programming", "kernel gpu", "nvidia cuda"],
     "cuopt": ["cuopt", "optimizacion gpu", "vehicle routing", "linear programming gpu"],
+    "rag": ["rag", "retrieval augmented", "vector database", "milvus", "elasticsearch", "nvidia rag", "deploy rag", "rag blueprint", "ingestor", "nim-llm", "ngc"],
 }
 
 def _detectar_nvidia_skill(prompt):
@@ -2487,10 +2488,14 @@ def _jc_procesar_solicitud(msg):
         except: pass
     # Construir contexto
     system_prompt = (
-        "Eres JCodex, un agente de código integrado en JARVIS. "
-        "Puedes leer archivos, modificarlos, y ejecutar comandos del sistema. "
+        "Eres JCodex, un agente de programación profesional integrado en JARVIS. "
+        "Tienes conocimiento avanzado de: Python, JavaScript, TypeScript, Rust, Go, Java, C/C++, SQL, HTML/CSS, React, Node.js, Docker, Kubernetes, Git, Linux, y APIs REST/GraphQL. "
+        "Puedes: leer archivos, crear archivos, modificarlos, ejecutar comandos del sistema, depurar errores, refactorizar código, escribir tests, y revisar PRs. "
+        "Siempre escribe código limpio, bien documentado y siguiendo las mejores prácticas de la industria. "
+        "Si el usuario pregunta sobre NVIDIA/GPU/accelerated computing, usa las NVIDIA Skills disponibles en nvidia_skills/. "
         "IMPORTANTE: Cuando modifiques un archivo, devuelve SOLO el código completo modificado usando este formato EXACTO:"
         "\n\n### EDITAR: ruta/archivo.ext\n```\n(código completo aquí)\n```\n\n"
+        "Para crear un archivo nuevo: ### CREAR: ruta/nuevo_archivo.ext\n```\n(código completo)\n```\n\n"
         "Cuando necesites ejecutar un comando, usa: ### EJECUTAR: comando\n\n"
         "Si solo es una respuesta conversacional, responde normalmente. "
         f"Carpeta del proyecto: {_jcodex_folder[0]}\n"
@@ -2498,6 +2503,12 @@ def _jc_procesar_solicitud(msg):
     )
     if archivo_actual:
         system_prompt += f"\nContenido del archivo abierto:\n```\n{archivo_actual[:8000]}\n```"
+
+    # ── Cargar NVIDIA Skills si el prompt menciona GPU/accelerated computing ──
+    nvidia_skill = _detectar_nvidia_skill(msg)
+    if nvidia_skill:
+        system_prompt += f"\n\n--- NVIDIA SKILL (conocimiento técnico) ---\n{nvidia_skill[:6000]}\n--- FIN SKILL ---"
+        _jc_chat_mensaje("system", "📚 NVIDIA Skill cargada para esta consulta")
 
     messages = [{"role": "system", "content": system_prompt}] + _jcodex_chat_history[-15:]
     respuesta, proveedor = _jc_llamar_ia_solicitud(system_prompt, messages)
@@ -2527,6 +2538,19 @@ def _jc_procesar_solicitud(msg):
             _jc_chat_mensaje("system", f"✅ Editado: {os.path.basename(ruta)}")
         except Exception as e:
             _jc_chat_mensaje("system", f"❌ Error al editar {ruta}: {e}")
+    # Buscar bloques de creación de archivos nuevos
+    creates = _re.findall(r"### CREAR:\s*(.+?)\n```(?:\w*)\n(.*?)```", respuesta, _re.DOTALL)
+    for ruta, codigo in creates:
+        ruta = ruta.strip()
+        if not os.path.isabs(ruta):
+            ruta = os.path.join(_jcodex_folder[0], ruta)
+        try:
+            os.makedirs(os.path.dirname(ruta), exist_ok=True)
+            with open(ruta, "w", encoding="utf-8") as f:
+                f.write(codigo.strip())
+            _jc_chat_mensaje("system", f"✅ Creado: {os.path.basename(ruta)}")
+        except Exception as e:
+            _jc_chat_mensaje("system", f"❌ Error al crear {ruta}: {e}")
     # Buscar comandos
     cmds = _re.findall(r"### EJECUTAR:\s*(.+?)\n", respuesta)
     for cmd in cmds:
@@ -2539,8 +2563,8 @@ def _jc_procesar_solicitud(msg):
             _jc_chat_mensaje("system", output[:500])
         except Exception as e:
             _jc_chat_mensaje("system", f"❌ Error: {e}")
-    # Refrescar árbol si hubo ediciones
-    if edits:
+    # Refrescar árbol si hubo ediciones/creaciones
+    if edits or creates:
         ui(_jc_refrescar_arbol)
 
 def _jc_probar():
