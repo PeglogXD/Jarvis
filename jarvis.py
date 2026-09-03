@@ -2407,15 +2407,46 @@ def _jc_abrir_archivo(path):
             lbl.config(fg=TEXT_DIM)
     _jc_chat_mensaje("system", f"Abierto: {os.path.basename(path)} ({len(content)} chars)")
 
-def _jc_chat_mensaje(role, text):
-    """Agrega un mensaje al chat del agente."""
+def _jc_chat_mensaje(role, text, animate=False):
+    """Agrega un mensaje al chat del agente. animate=True para efecto typewriter."""
     if not _jcodex_panel: return
     box = _jcodex_panel._chat_box
     box.config(state=tk.NORMAL)
     prefix = "🤖 " if role == "agent" else "📁 " if role == "user" else "⚙ "
-    box.insert(tk.END, f"\n{prefix}{text}")
+    start_pos = box.index(tk.END)
+    box.insert(tk.END, f"\n{prefix}")
+    if animate and role == "agent":
+        # Efecto typewriter letra por letra
+        for i in range(len(text)):
+            box.insert(tk.END, text[i])
+            box.see(tk.END)
+            box.update_idletasks()
+            time.sleep(0.008)  # 8ms por letra → ~125 chars/sec
+    else:
+        box.insert(tk.END, text)
     box.config(state=tk.DISABLED)
     box.see(tk.END)
+
+def _jc_pensando(msg="Pensando"):
+    """Muestra animación de pensando en el chat."""
+    if not _jcodex_panel: return
+    box = _jcodex_panel._chat_box
+    box.config(state=tk.NORMAL)
+    box.insert(tk.END, f"\n⏳ {msg}")
+    box.config(state=tk.DISABLED)
+    box.see(tk.END)
+    # Animar puntos
+    for dots in [".", "..", "..."]:
+        time.sleep(0.4)
+        try:
+            box.config(state=tk.NORMAL)
+            pos = box.index(tk.END + "-2c")
+            box.delete(pos, tk.END)
+            box.insert(tk.END, dots)
+            box.config(state=tk.DISABLED)
+            box.see(tk.END)
+            box.update_idletasks()
+        except: pass
 
 def _jc_enviar_mensaje():
     """Envía un mensaje al agente de código."""
@@ -2473,22 +2504,33 @@ def _jc_llamar_ia_solicitud(system_prompt, messages, max_tokens=8192):
     return None, None
 
 def _jc_procesar_solicitud(msg):
-    """Procesa una solicitud del usuario usando IA como agente de código."""
+    """Procesa una solicitud del usuario usando IA como agente de código.
+    Muestra pasos en tiempo real (como Freebuff) y aplica cambios directo al editor."""
     if not gemini_client and not nvidia_client:
         _jc_chat_mensaje("system", "❌ No hay proveedores de IA disponibles. Verifica tus API keys.")
         return
+
+    # ─── PASO 1: Analizando ───
+    _jc_pensando("Analizando tu solicitud")
+    time.sleep(0.3)
+
     # Leer archivo actual si hay uno
     archivo_actual = ""
     archivo_path = ""
     if _jcodex_panel and _jcodex_panel._current_file[0]:
         archivo_path = _jcodex_panel._current_file[0]
+        _jc_pensando(f"Leyendo {os.path.basename(archivo_path)}")
         try:
             with open(archivo_path, "r", encoding="utf-8", errors="replace") as f:
                 archivo_actual = f.read()
+            time.sleep(0.2)
         except: pass
+
     # Construir contexto
     system_prompt = (
         "Eres JCodex, un agente de programación profesional integrado en JARVIS. "
+        "Hablas de forma natural, como un colega programador experto. No eres robótico. "
+        "Explicas lo que haces mientras lo haces. Muestras tu proceso de pensamiento. "
         "Tienes conocimiento avanzado de: Python, JavaScript, TypeScript, Rust, Go, Java, C/C++, SQL, HTML/CSS, React, Node.js, Docker, Kubernetes, Git, Linux, y APIs REST/GraphQL. "
         "Puedes: leer archivos, crear archivos, modificarlos, ejecutar comandos del sistema, depurar errores, refactorizar código, escribir tests, y revisar PRs. "
         "Siempre escribe código limpio, bien documentado y siguiendo las mejores prácticas de la industria. "
@@ -2497,7 +2539,7 @@ def _jc_procesar_solicitud(msg):
         "\n\n### EDITAR: ruta/archivo.ext\n```\n(código completo aquí)\n```\n\n"
         "Para crear un archivo nuevo: ### CREAR: ruta/nuevo_archivo.ext\n```\n(código completo)\n```\n\n"
         "Cuando necesites ejecutar un comando, usa: ### EJECUTAR: comando\n\n"
-        "Si solo es una respuesta conversacional, responde normalmente. "
+        "Responde en español latinoamericano. Sé directo pero amigable. "
         f"Carpeta del proyecto: {_jcodex_folder[0]}\n"
         f"Archivo abierto: {archivo_path}\n"
     )
@@ -2510,19 +2552,32 @@ def _jc_procesar_solicitud(msg):
         system_prompt += f"\n\n--- NVIDIA SKILL (conocimiento técnico) ---\n{nvidia_skill[:6000]}\n--- FIN SKILL ---"
         _jc_chat_mensaje("system", "📚 NVIDIA Skill cargada para esta consulta")
 
+    # ─── PASO 2: Conectando con IA ───
+    _jc_pensando("Conectando con IA")
+    time.sleep(0.2)
+
     messages = [{"role": "system", "content": system_prompt}] + _jcodex_chat_history[-15:]
+
+    # ─── PASO 3: Generando respuesta ───
+    _jc_pensando("Generando respuesta")
+    time.sleep(0.15)
+
     respuesta, proveedor = _jc_llamar_ia_solicitud(system_prompt, messages)
     if not respuesta:
         _jc_chat_mensaje("system", "❌ No se pudo obtener respuesta de ningún proveedor.")
         return
-    _jc_chat_mensaje("system", f"(vía {proveedor})")
+    _jc_chat_mensaje("system", f"📡 vía {proveedor}")
 
     _jcodex_chat_history.append({"role": "assistant", "content": respuesta})
-    _jc_chat_mensaje("agent", respuesta[:500])
 
-    # ── Parsear acciones: EDITAR o EJECUTAR ──
+    # ─── PASO 4: Mostrar respuesta con efecto typewriter ───
+    # Separar texto explicativo del código
     import re as _re
-    # Buscar bloques de edición
+    respuesta_limpia = _re.sub(r"### (EDITAR|CREAR|EJECUTAR):.+?```.*?``" , "", respuesta, flags=_re.DOTALL).strip()
+    if respuesta_limpia:
+        _jc_chat_mensaje("agent", respuesta_limpia[:600], animate=True)
+
+    # ─── PASO 5: Aplicar cambios directo al editor ───
     edits = _re.findall(r"### EDITAR:\s*(.+?)\n```(?:\w*)\n(.*?)```", respuesta, _re.DOTALL)
     for ruta, codigo in edits:
         ruta = ruta.strip()
@@ -2536,8 +2591,15 @@ def _jc_procesar_solicitud(msg):
             with open(ruta, "w", encoding="utf-8") as f:
                 f.write(codigo.strip())
             _jc_chat_mensaje("system", f"✅ Editado: {os.path.basename(ruta)}")
+            # ── Aplicar directo al editor si es el archivo abierto ──
+            if _jcodex_panel._current_file[0] == ruta:
+                ui(_jc_aplicar_al_editor, codigo.strip(), ruta)
+            else:
+                # Si no es el archivo abierto, abrirlo automáticamente
+                ui(_jc_aplicar_al_editor, codigo.strip(), ruta)
         except Exception as e:
             _jc_chat_mensaje("system", f"❌ Error al editar {ruta}: {e}")
+
     # Buscar bloques de creación de archivos nuevos
     creates = _re.findall(r"### CREAR:\s*(.+?)\n```(?:\w*)\n(.*?)```", respuesta, _re.DOTALL)
     for ruta, codigo in creates:
@@ -2549,8 +2611,11 @@ def _jc_procesar_solicitud(msg):
             with open(ruta, "w", encoding="utf-8") as f:
                 f.write(codigo.strip())
             _jc_chat_mensaje("system", f"✅ Creado: {os.path.basename(ruta)}")
+            # Abrir el archivo creado en el editor
+            ui(_jc_aplicar_al_editor, codigo.strip(), ruta)
         except Exception as e:
             _jc_chat_mensaje("system", f"❌ Error al crear {ruta}: {e}")
+
     # Buscar comandos
     cmds = _re.findall(r"### EJECUTAR:\s*(.+?)\n", respuesta)
     for cmd in cmds:
@@ -2563,9 +2628,32 @@ def _jc_procesar_solicitud(msg):
             _jc_chat_mensaje("system", output[:500])
         except Exception as e:
             _jc_chat_mensaje("system", f"❌ Error: {e}")
-    # Refrescar árbol si hubo ediciones/creaciones
+
+    # ─── PASO 6: Completado ───
     if edits or creates:
         ui(_jc_refrescar_arbol)
+        _jc_chat_mensaje("system", "✨ Listo — cambios aplicados al editor")
+    else:
+        _jc_chat_mensaje("system", "✨ Listo")
+
+def _jc_aplicar_al_editor(codigo, ruta):
+    """Aplica código directamente al editor con efecto visual de highlight."""
+    if not _jcodex_panel: return
+    editor = _jcodex_panel._editor
+    _jcodex_panel._current_file[0] = ruta
+    # Limpiar y cargar código nuevo
+    editor.config(state=tk.NORMAL)
+    editor.delete("1.0", tk.END)
+    editor.insert("1.0", codigo)
+    editor.config(state=tk.DISABLED)
+    # Highlight temporal del editor (efecto de confirmación)
+    try:
+        editor.config(highlightthickness=2, highlightcolor="#00FFAA", highlightbackground="#00FFAA")
+        ventana.after(1500, lambda: editor.config(
+            highlightthickness=1, highlightcolor=ACCENT, highlightbackground=BORDER))
+    except: pass
+    # Actualizar etiqueta de archivo abierto
+    _jc_chat_mensaje("system", f"📝 Editor actualizado: {os.path.basename(ruta)}")
 
 def _jc_probar():
     """Crea jarvisP.py y entra en modo suspenso."""
