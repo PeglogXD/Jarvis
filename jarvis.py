@@ -533,10 +533,61 @@ Responde SOLO en JSON con este formato exacto, sin texto extra ni markdown:
         reproducir_sfx("error")
         return f"Error al generar el correo: {str(e)}"
 
+_PREFIJOS_APPS = [
+    "abre la aplicación", "abrir la aplicación", "abre una aplicación", "abrir una aplicación",
+    "abre la app", "abrir la app", "abre aplicación", "abrir aplicación", "abre la aplicacion",
+    "abrir la aplicacion", "abre una aplicacion", "abrir una aplicacion",
+    "abre el programa", "abrir programa", "abre el app", "abre", "abrir",
+    "ejecuta", "ejecutar", "inicia", "iniciar", "por favor", "puedes", "podrías", "podrias",
+]
+
+
+def _buscar_acceso_directo(nombre):
+    """Busca un acceso directo .lnk en el Menú Inicio por nombre (funciona para casi cualquier app)."""
+    carpetas = [
+        os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs"),
+        r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs",
+    ]
+    objetivo = nombre.lower().strip()
+    for carpeta in carpetas:
+        if not os.path.isdir(carpeta):
+            continue
+        for root, dirs, files in os.walk(carpeta):
+            for f in files:
+                if not f.lower().endswith(".lnk"):
+                    continue
+                nombre_lnk = os.path.splitext(f)[0].lower()
+                if objetivo and (objetivo in nombre_lnk or nombre_lnk in objetivo):
+                    return os.path.join(root, f)
+    return None
+
+
 def abrir_programa_o_ruta(consulta):
-    """Usa PyAutoGUI para presionar Win + escribir el programa, simulando la búsqueda de Windows."""
+    """Abre una aplicación de la PC buscando primero en el Menú Inicio, luego con 'start' y por último con la búsqueda de Windows."""
+    programa = consulta.lower()
+    for kw in _PREFIJOS_APPS:
+        programa = programa.replace(kw, "")
+    programa = programa.strip(" .,¿?")
+    if not programa or any(p in programa for p in ["archivo", "carpeta", "documento", "código", "codigo"]):
+        return "¿Qué aplicación quieres que abra, señor?"
+    # 1) Acceso directo del Menú Inicio
     try:
-        programa = consulta.lower().replace("abre el programa", "").replace("abrir programa", "").strip()
+        lnk = _buscar_acceso_directo(programa)
+        if lnk:
+            os.startfile(lnk)
+            reproducir_sfx("success")
+            return f"Abriendo {programa.title()}, señor."
+    except Exception:
+        pass
+    # 2) Comando 'start' de Windows
+    try:
+        subprocess.Popen(["cmd", "/c", "start", "", programa], creationflags=NO_WINDOW)
+        reproducir_sfx("success")
+        return f"Abriendo {programa.title()}, señor."
+    except Exception:
+        pass
+    # 3) Búsqueda de Windows (Win + escribir)
+    try:
         pyautogui.press('win')
         time.sleep(0.5)
         pyautogui.write(programa)
@@ -547,6 +598,34 @@ def abrir_programa_o_ruta(consulta):
     except Exception as e:
         reproducir_sfx("error")
         return "Hubo un error al intentar abrir la aplicación en su PC."
+
+
+def ultima_descarga(consulta=""):
+    """Muestra la última descarga o abre la carpeta de Descargas."""
+    downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+    if not os.path.isdir(downloads):
+        downloads = os.path.join(os.path.expanduser("~"), "Descargas")
+    if not os.path.isdir(downloads):
+        return "No encontré la carpeta de Descargas en este equipo."
+    if any(p in consulta for p in ["abre la carpeta", "abrir la carpeta", "abre descargas", "abrir descargas"]):
+        try:
+            os.startfile(downloads)
+            return "Abriendo la carpeta de Descargas, señor."
+        except Exception:
+            return "No pude abrir la carpeta de Descargas."
+    archivos = [os.path.join(downloads, f) for f in os.listdir(downloads)
+                if os.path.isfile(os.path.join(downloads, f))]
+    if not archivos:
+        return "La carpeta de Descargas está vacía, señor."
+    ultimo = max(archivos, key=os.path.getmtime)
+    nombre = os.path.basename(ultimo)
+    tamano_mb = os.path.getsize(ultimo) / (1024 * 1024)
+    fecha = datetime.fromtimestamp(os.path.getmtime(ultimo)).strftime("%d/%m/%Y %H:%M")
+    try:
+        os.startfile(ultimo)
+        return f"📥 Tu última descarga es: {nombre} ({tamano_mb:.2f} MB, {fecha}). La estoy abriendo, señor."
+    except Exception:
+        return f"📥 Tu última descarga es: {nombre} ({tamano_mb:.2f} MB, {fecha})."
 
 def cambiar_salida_audio():
     """Abre el panel de sonido clásico de Windows (uso genérico, sin nombre de dispositivo)."""
@@ -1821,8 +1900,40 @@ def procesar_mensaje(voz, silencio=False):
             responder(res)
         threading.Thread(target=bg_gmail, daemon=True).start()
 
-    # 🚀 ABRIR PROGRAMAS
-    elif any(x in voz_lower for x in ["abrir programa", "ejecutar"]):
+    # 🖥️ INTERFAZ / MODO MINI
+    elif any(x in voz_lower for x in ["abre tu interfaz", "abrir tu interfaz", "abre la interfaz", "abrir la interfaz",
+                                      "muestra tu interfaz", "muestra la interfaz", "quita el modo mini",
+                                      "quitar el modo mini", "sal del modo mini", "salir del modo mini",
+                                      "sal de modo mini", "modo completo", "abre la ventana", "abrir la ventana"]):
+        if _mini_mode[0]:
+            abrir_ventana_completa()
+            responder("Interfaz restaurada en pantalla completa, señor.")
+        else:
+            responder("Ya estás viendo la interfaz completa, señor.")
+
+    # ◉ ACTIVAR MODO MINI
+    elif any(x in voz_lower for x in ["ponte en modo mini", "activa el modo mini", "entra en modo mini",
+                                      "ponte en mini", "activa el mini", "activa modo mini"]):
+        if not _mini_mode[0]:
+            abrir_mini_mode()
+            responder("Modo mini activado, señor.")
+        else:
+            responder("Ya estás en modo mini, señor.")
+
+    # 📥 ÚLTIMA DESCARGA / CARPETA DE DESCARGAS
+    elif any(x in voz_lower for x in ["última descarga", "ultima descarga", "último archivo descargado",
+                                      "ultimo archivo descargado", "qué descargué", "que descargue",
+                                      "qué descargue", "mis descargas", "carpeta de descargas",
+                                      "imprime mi última descarga", "imprime mi ultima descarga"]):
+        res = ultima_descarga(voz_lower)
+        responder(res)
+
+    # 🚀 ABRIR PROGRAMAS / APLICACIONES
+    elif any(x in voz_lower for x in ["abrir programa", "abre el programa", "abrir aplicación", "abrir aplicacion",
+                                      "abre la aplicación", "abre la aplicacion", "abre una aplicación",
+                                      "abre una aplicacion", "abre la app", "abrir la app", "abre aplicación",
+                                      "abre aplicacion", "ejecuta", "ejecutar", "inicia la aplicación",
+                                      "inicia la aplicacion"]):
         res = abrir_programa_o_ruta(voz)
         responder(res)
 
