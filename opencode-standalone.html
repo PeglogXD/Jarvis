@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCode — The open source AI coding agent</title>
+<meta name="theme-color" content="#080808">
+<meta name="description" content="Réplica perfecta de OpenCode — The open source AI coding agent. Funciona 100% offline.">
+<!-- standalone offline: sin dependencias externas - funciona con file:// en Chromebook -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23080808'/><rect x='6' y='6' width='20' height='20' fill='none' stroke='%23F1ECEC' stroke-width='1.5'/><rect x='10' y='12' width='12' height='8' fill='%23CFCECD'/></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080808;
+  --bg2:#111111;
+  --bg3:#1a1a1a;
+  --bg4:#1f1f1f;
+  --border:#262626;
+  --border2:#333;
+  --text:#F1ECEC;
+  --text2:#B7B1B1;
+  --text3:#656363;
+  --muted:#8a8a8a;
+  --accent:#fff;
+  --pixel-dark:#211E1E;
+  --pixel-mid:#656363;
+  --pixel-light:#CFCECD;
+  --code-bg:#0f0f0f;
+  --green:#00d492;
+  --blue:#60a5fa;
+  --orange:#fb923c;
+}
+@media(prefers-color-scheme:light){
+  :root{--bg:#fafafa;--bg2:#fff;--bg3:#f0f0f0;--border:#e5e5e5}
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Geist',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  line-height:1.5;
+}
+/* pixel grid bg */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size:32px 32px;
+  pointer-events:none;
+  z-index:0;
+}
+/* header */
+.header{
+  position:sticky;top:0;z-index:50;
+  background:rgba(8,8,8,0.85);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;
+}
+.header-left{display:flex;align-items:center;gap:32px}
+.logo{
+  display:flex;align-items:center;gap:10px;
+  text-decoration:none;
+}
+.logo-svg{height:28px;width:auto;display:block}
+.nav{display:flex;align-items:center;gap:20px;font-size:13.5px}
+.nav a{color:var(--text2);text-decoration:none;font-weight:500;letter-spacing:-0.01em;transition:color .15s}
+.nav a:hover{color:var(--text)}
+.nav a.active{color:var(--text)}
+.header-right{display:flex;align-items:center;gap:12px}
+.btn-ghost{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:12px;letter-spacing:0.04em;
+  padding:7px 14px;border:1px solid var(--border2);
+  background:transparent;color:var(--text2);
+  cursor:pointer;transition:all .15s;
+}
+.btn-ghost:hover{border-color:var(--text2);color:var(--text);background:var(--bg3)}
+.btn-primary{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:12px;letter-spacing:0.04em;font-weight:600;
+  padding:8px 16px;background:#fff;color:#000;border:1px solid #fff;
+  cursor:pointer;transition:all .15s;
+}
+.btn-primary:hover{background:#e5e5e5}
+.hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer}
+/* hero */
+.hero{
+  position:relative;z-index:1;
+  max-width:1120px;margin:0 auto;
+  padding:72px 24px 32px;
+  text-align:center;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text2);border:1px solid var(--border2);padding:6px 12px;
+  background:rgba(255,255,255,0.03);margin-bottom:28px;
+}
+.hero-badge span{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.hero h1{
+  font-size:clamp(36px,6vw,64px);font-weight:700;letter-spacing:-0.04em;line-height:0.95;
+  margin-bottom:16px;color:var(--text);
+}
+.hero h1 em{font-style:normal;background:linear-gradient(180deg,#fff 40%,#999);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{
+  font-size:17px;color:var(--text2);max-width:560px;margin:0 auto 36px;line-height:1.6;
+}
+/* install tabs */
+.install-wrap{
+  max-width:640px;margin:0 auto 48px;
+  background:var(--bg2);border:1px solid var(--border);
+  text-align:left;overflow:hidden;
+}
+.install-tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--border);
+  background:var(--bg3);padding:0 4px;overflow-x:auto;scrollbar-width:none;
+}
+.install-tabs button{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;letter-spacing:0.04em;
+  padding:12px 16px;background:transparent;border:none;color:var(--text3);
+  cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;
+}
+.install-tabs button.active{color:var(--text);border-bottom-color:var(--text);background:var(--bg2)}
+.install-tabs button:hover{color:var(--text2)}
+.install-code{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13.5px;
+  background:var(--code-bg);color:#e5e5e5;
+  overflow-x:auto;
+}
+.install-code code{white-space:nowrap}
+.install-code .prompt{color:var(--text3);margin-right:8px;user-select:none}
+.copy-btn{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;
+  padding:6px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;margin-left:16px;flex-shrink:0;transition:all .15s;
+}
+.copy-btn:hover{color:var(--text);border-color:var(--text2)}
+.copy-btn.copied{color:var(--green);border-color:var(--green)}
+/* TUI replica - the star */
+.tui-section{max-width:1120px;margin:0 auto;padding:0 24px 48px;position:relative;z-index:1}
+.tui-window{
+  background:#0a0a0a;border:1px solid #262626;
+  overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.03);
+}
+.tui-titlebar{
+  height:36px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;background:#141414;border-bottom:1px solid #262626;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;letter-spacing:0.06em;color:var(--text3);
+}
+.tui-dots{display:flex;gap:6px}
+.tui-dot{width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,0.1)}
+.tui-dot.r{background:#ff5f57}.tui-dot.y{background:#ffbd2e}.tui-dot.g{background:#28c840}
+.tui-body{display:flex;height:520px;min-height:520px}
+.tui-sidebar{
+  width:220px;min-width:220px;background:#0f0f0f;border-right:1px solid #262626;
+  display:flex;flex-direction:column;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11.5px;overflow:hidden;
+}
+.tui-sidebar-header{padding:10px 12px;border-bottom:1px solid #262626;color:var(--text3);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.tui-sidebar-header b{color:var(--text2);font-weight:600}
+.tui-files{flex:1;overflow-y:auto;padding:8px 0}
+.tui-file{padding:5px 12px;display:flex;align-items:center;gap:8px;color:var(--text3);cursor:pointer;transition:all .1s;white-space:nowrap}
+.tui-file:hover{background:#1a1a1a;color:var(--text2)}
+.tui-file.active{background:#1f1f1f;color:var(--text);border-left:2px solid #fff}
+.tui-file .icon{font-size:13px;opacity:0.7}
+.tui-sessions{border-top:1px solid #262626;padding:8px 0}
+.tui-session{padding:6px 12px;display:flex;align-items:center;gap:8px;color:var(--text3);font-size:11px;cursor:pointer}
+.tui-session:hover{color:var(--text2)}
+.tui-session.active{color:var(--text);background:#1a1a1a}
+.tui-main{flex:1;display:flex;flex-direction:column;min-width:0;background:#0a0a0a}
+.tui-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+.msg{display:flex;gap:12px;max-width:100%}
+.msg-avatar{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1px solid #262626;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+.msg.user .msg-avatar{background:#fff;color:#000;border-color:#fff}
+.msg.assistant .msg-avatar{background:#1a1a1a;color:var(--text2);border-color:#2a2a2a}
+.msg-content{flex:1;min-width:0}
+.msg-role{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.msg-text{font-size:13.5px;line-height:1.6;color:#d4d4d4;white-space:pre-wrap;word-break:break-word}
+.msg-text strong{color:#fff;font-weight:600}
+.msg-text code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12.5px;background:#1a1a1a;border:1px solid #262626;padding:1px 5px;color:#e5e5e5}
+.msg-tool{margin-top:8px;border:1px solid #262626;background:#111;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11.5px;overflow:hidden}
+.msg-tool-header{padding:6px 10px;background:#161616;border-bottom:1px solid #262626;display:flex;align-items:center;gap:8px;color:var(--text3);font-size:11px}
+.msg-tool-header .dot{width:7px;height:7px;border-radius:50%}.msg-tool-header .dot.green{background:var(--green)}.msg-tool-header .dot.blue{background:var(--blue)}
+.msg-tool-body{padding:10px 12px;color:#a3a3a3;overflow-x:auto;max-height:160px;overflow-y:auto;white-space:pre;line-height:1.5}
+.msg-tool-body .line-num{color:#525252;user-select:none;margin-right:12px}
+.diff-add{background:rgba(0,212,148,0.08);color:#6ee7b7;display:block;padding:1px 0}
+.diff-del{background:rgba(239,68,68,0.08);color:#fca5a5;display:block;padding:1px 0}
+.diff-add::before{content:'+ ';color:var(--green)}.diff-del::before{content:'- ';color:#ef4444}
+.tui-input-wrap{border-top:1px solid #262626;padding:12px;background:#0f0f0f}
+.tui-input-row{display:flex;align-items:center;gap:10px;background:#0a0a0a;border:1px solid #262626;padding:0 12px;height:42px;transition:border-color .15s}
+.tui-input-row:focus-within{border-color:#404040}
+.tui-mode{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;
+  padding:4px 8px;border:1px solid #262626;cursor:pointer;user-select:none;transition:all .15s;
+}
+.tui-mode.build{background:#fff;color:#000;border-color:#fff}
+.tui-mode.plan{background:transparent;color:var(--orange);border-color:rgba(251,146,60,0.3)}
+.tui-input{flex:1;background:transparent;border:none;outline:none;color:#e5e5e5;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px}
+.tui-input::placeholder{color:#525252}
+.tui-hints{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;color:#525252;margin-top:8px;display:flex;gap:16px;flex-wrap:wrap}
+.tui-hints kbd{background:#1a1a1a;border:1px solid #2a2a2a;border-bottom-width:2px;padding:1px 5px;color:#737373;font-family:inherit;font-size:10px}
+.tui-right{
+  width:280px;min-width:280px;background:#0f0f0f;border-left:1px solid #262626;
+  display:flex;flex-direction:column;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;overflow:hidden;
+}
+.tui-right-header{padding:10px 12px;border-bottom:1px solid #262626;color:var(--text3);font-size:10px;letter-spacing:0.08em;text-transform:uppercase}
+.tui-todo{padding:8px 12px;border-bottom:1px solid #1a1a1a;display:flex;gap:8px;align-items:flex-start}
+.tui-todo .check{width:14px;height:14px;border:1px solid #333;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:9px}
+.tui-todo.done .check{background:var(--green);border-color:var(--green);color:#000}
+.tui-todo.done .tui-todo-text{color:#525252;text-decoration:line-through}
+.tui-todo-text{color:#a3a3a3;line-height:1.4}
+.tui-lsp{padding:10px 12px;color:#525252;line-height:1.5}
+.tui-lsp b{color:#737373}
+/* features */
+.features{max-width:1120px;margin:0 auto;padding:56px 24px;position:relative;z-index:1}
+.section-label{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.section-label::before{content:'';width:24px;height:1px;background:var(--border2)}
+.features h2{font-size:32px;font-weight:700;letter-spacing:-0.03em;margin-bottom:12px}
+.features h2 span{color:var(--text3);font-weight:400}
+.features p.section-desc{color:var(--text2);font-size:15px;max-width:520px;margin-bottom:32px;line-height:1.6}
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.feature-card{background:var(--bg2);padding:24px}
+.feature-card h3{font-size:14px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;letter-spacing:-0.01em}
+.feature-card h3::before{content:'[*]';font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:var(--text3);font-weight:400}
+.feature-card p{font-size:13.5px;color:var(--text2);line-height:1.6}
+.feature-card .tag{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-top:12px;display:inline-block;border:1px solid var(--border2);padding:3px 7px}
+/* stats */
+.stats{max-width:1120px;margin:0 auto;padding:24px 24px 56px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);position:relative;z-index:1}
+.stat{background:var(--bg2);padding:28px 24px;display:flex;justify-content:space-between;align-items:flex-start}
+.stat-label{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.stat-value{font-size:36px;font-weight:700;letter-spacing:-0.04em;line-height:1}
+.stat-value small{font-size:16px;font-weight:500;color:var(--text3);margin-left:2px}
+.stat-fig{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;color:var(--text3);border:1px solid var(--border2);padding:4px 8px}
+/* privacy + faq */
+.two-col{max-width:1120px;margin:0 auto;padding:0 24px 56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;position:relative;z-index:1}
+.two-col h2{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:12px}
+.two-col p{font-size:14px;color:var(--text2);line-height:1.7}
+.faq-item{border-bottom:1px solid var(--border);padding:14px 0}
+.faq-q{font-size:13.5px;font-weight:600;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.faq-q::after{content:'+';font-weight:400;color:var(--text3);font-size:18px;transition:transform .15s}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{font-size:13.5px;color:var(--text2);line-height:1.6;max-height:0;overflow:hidden;transition:all .2s}
+.faq-item.open .faq-a{max-height:200px;margin-top:8px}
+/* zen */
+.zen{max-width:1120px;margin:0 auto 56px;background:var(--bg2);border:1px solid var(--border);padding:32px;display:flex;justify-content:space-between;align-items:center;gap:24px;position:relative;z-index:1}
+.zen h3{font-size:18px;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px}
+.zen p{font-size:13.5px;color:var(--text2);max-width:520px;line-height:1.6}
+.zen .btn-primary{white-space:nowrap}
+/* footer */
+.footer{border-top:1px solid var(--border);padding:32px 24px;max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;position:relative;z-index:1}
+.footer-left{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:var(--text3);letter-spacing:0.04em;display:flex;gap:16px;flex-wrap:wrap}
+.footer-left a{color:var(--text3);text-decoration:none}.footer-left a:hover{color:var(--text2)}
+.footer-right{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:var(--text3)}
+/* responsive */
+@media(max-width:900px){
+  .nav{display:none}
+  .hamburger{display:block}
+  .tui-body{flex-direction:column;height:auto}
+  .tui-sidebar{width:100%;min-width:0;flex-direction:row;height:120px}
+  .tui-files{flex:1}.tui-sessions{width:140px;border-top:none;border-left:1px solid #262626}
+  .tui-right{display:none}
+  .tui-body{height:600px}
+  .feature-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
+  .zen{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:600px){
+  .tui-sidebar{display:none}
+  .hero{padding-top:48px}
+  .install-code{font-size:11.5px}
+}
+/* scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a2a}
+::-webkit-scrollbar-thumb:hover{background:#333}
+/* autocomplete */
+.ac{position:absolute;bottom:52px;left:12px;right:12px;background:#1a1a1a;border:1px solid #2a2a2a;max-height:160px;overflow-y:auto;display:none;z-index:10;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px}
+.ac-item{padding:7px 12px;color:#a3a3a3;cursor:pointer;display:flex;justify-content:space-between}
+.ac-item:hover,.ac-item.active{background:#262626;color:#fff}
+/* typing */
+.typing{display:inline-flex;gap:3px;align-items:center;padding:8px 0}
+.typing span{width:4px;height:4px;background:#525252;border-radius:50%;animation:bounce 1.4s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{opacity:0.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-4px)}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <a class="logo" href="#">
+      <!-- pixel OPENCODE logo recreation -->
+      <svg class="logo-svg" viewBox="0 0 234 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 30H6V18H18V30Z" fill="#CFCECD"/><path d="M18 12H6V30H18V12ZM24 36H0V6H24V36Z" fill="#656363"/>
+        <path d="M48 30H36V18H48V30Z" fill="#CFCECD"/><path d="M36 30H48V12H36V30ZM54 36H36V42H30V6H54V36Z" fill="#656363"/>
+        <path d="M84 24V30H66V24H84Z" fill="#CFCECD"/><path d="M84 24H66V30H84V36H60V6H84V24ZM66 18H78V12H66V18Z" fill="#656363"/>
+        <path d="M108 36H96V18H108V36Z" fill="#CFCECD"/><path d="M108 12H96V36H90V6H108V12ZM114 36H108V12H114V36Z" fill="#656363"/>
+        <path d="M144 30H126V18H144V30Z" fill="#CFCECD"/><path d="M144 12H126V30H144V36H120V6H144V12Z" fill="#F1ECEC"/>
+        <path d="M168 30H156V18H168V30Z" fill="#CFCECD"/><path d="M168 12H156V30H168V12ZM174 36H150V6H174V36Z" fill="#F1ECEC"/>
+        <path d="M198 30H186V18H198V30Z" fill="#CFCECD"/><path d="M198 12H186V30H198V12ZM204 36H180V6H198V0H204V36Z" fill="#F1ECEC"/>
+        <path d="M234 24V30H216V24H234Z" fill="#CFCECD"/><path d="M216 12V18H228V12H216ZM234 24H216V30H234V36H210V6H234V24Z" fill="#F1ECEC"/>
+      </svg>
+    </a>
+    <nav class="nav">
+      <a href="https://github.com/anomalyco/opencode" target="_blank">GitHub [208K]</a>
+      <a href="#" class="active">Docs</a>
+      <a href="#">Data</a>
+      <a href="#">Zen</a>
+      <a href="#">Go</a>
+      <a href="#">Enterprise</a>
+    </nav>
+  </div>
+  <div class="header-right">
+    <button class="btn-ghost" onclick="document.getElementById('tui').scrollIntoView({behavior:'smooth'})">Open TUI →</button>
+    <button class="btn-primary" onclick="copyInstall()">Download</button>
+    <button class="hamburger" aria-label="menu">☰</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge"><span></span> v1.0 — The open source AI coding agent</div>
+  <h1>The open source<br><em>AI coding agent</em></h1>
+  <p>Free models included or connect any model from any provider, including Claude, GPT, Gemini and more.</p>
+
+  <div class="install-wrap" id="installWrap">
+    <div class="install-tabs" id="installTabs">
+      <button class="active" data-cmd="curl -fsSL https://opencode.ai/install | bash">curl</button>
+      <button data-cmd="npm install -g opencode-ai">npm</button>
+      <button data-cmd="bun install -g opencode-ai">bun</button>
+      <button data-cmd="brew install anomalyco/tap/opencode">brew</button>
+      <button data-cmd="paru -S opencode-bin">paru</button>
+      <button data-cmd="yay -S opencode-bin">yay</button>
+    </div>
+    <div class="install-code">
+      <code><span class="prompt">$</span><span id="installCmd">curl -fsSL https://opencode.ai/install | bash</span></code>
+      <button class="copy-btn" id="copyBtn" onclick="copyInstall()">Copy</button>
+    </div>
+  </div>
+</section>
+
+<section class="tui-section" id="tui">
+  <div class="tui-window">
+    <div class="tui-titlebar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="tui-dots"><div class="tui-dot r"></div><div class="tui-dot y"></div><div class="tui-dot g"></div></div>
+        <span>opencode — ~/projects/jarvis • <span style="color:#fff">claude-4-sonnet</span> • 2 sessions</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span style="color:#525252">AGENTS.md</span>
+        <span style="color:var(--green)">● LSP ready</span>
+      </div>
+    </div>
+    <div class="tui-body">
+      <aside class="tui-sidebar">
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div class="tui-sidebar-header"><span>Explorer</span><b>⇧E</b></div>
+          <div class="tui-files" id="fileList">
+            <div class="tui-file active"><span class="icon">▸</span> jarvis.py</div>
+            <div class="tui-file"><span class="icon"> </span> core/</div>
+            <div class="tui-file"><span class="icon"> </span> &nbsp;&nbsp;agent.py</div>
+            <div class="tui-file"><span class="icon"> </span> &nbsp;&nbsp;llm.py</div>
+            <div class="tui-file"><span class="icon"> </span> config.json</div>
+            <div class="tui-file"><span class="icon"> </span> AGENTS.md</div>
+            <div class="tui-file"><span class="icon"> </span> README.md</div>
+          </div>
+        </div>
+        <div class="tui-sessions">
+          <div class="tui-sidebar-header"><span>Sessions</span><span style="color:var(--green)">2</span></div>
+          <div class="tui-session active">● main — Build</div>
+          <div class="tui-session">○ refactor-auth</div>
+        </div>
+      </aside>
+
+      <main class="tui-main">
+        <div class="tui-messages" id="messages">
+          <!-- initial messages injected by JS -->
+        </div>
+        <div class="tui-input-wrap" style="position:relative">
+          <div class="tui-input-row" id="inputRow">
+            <div class="tui-mode build" id="modeBtn" onclick="toggleMode()" title="Tab to toggle">BUILD</div>
+            <input class="tui-input" id="tuiInput" placeholder="Ask anything, @ to mention files, / for commands..." autocomplete="off" spellcheck="false">
+            <span style="color:#333;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px">↵ send</span>
+          </div>
+          <div class="tui-hints">
+            <span><kbd>Tab</kbd> Plan / Build</span>
+            <span><kbd>@</kbd> file</span>
+            <span><kbd>/</kbd> commands</span>
+            <span><kbd>Ctrl</kbd> <kbd>C</kbd> interrupt</span>
+            <span><kbd>Esc</kbd> undo</span>
+          </div>
+          <div class="ac" id="ac"></div>
+        </div>
+      </main>
+
+      <aside class="tui-right" id="tuiRight">
+        <div class="tui-right-header">Todo — 3/5</div>
+        <div class="tui-todo done"><div class="check">✓</div><div class="tui-todo-text">Analyze project structure</div></div>
+        <div class="tui-todo done"><div class="check">✓</div><div class="tui-todo-text">Create AGENTS.md</div></div>
+        <div class="tui-todo"><div class="check"></div><div class="tui-todo-text">Implement auth middleware</div></div>
+        <div class="tui-todo"><div class="check"></div><div class="tui-todo-text">Add tests for /settings route</div></div>
+        <div class="tui-todo"><div class="check"></div><div class="tui-todo-text">Update docs</div></div>
+        <div class="tui-right-header" style="border-top:1px solid #262626;margin-top:8px">LSP • 3 active</div>
+        <div class="tui-lsp">
+          <b>● pyright</b> ready — jarvis.py<br>
+          <b>● typescript</b> ready — 12 files<br>
+          <b>● tailwind</b> ready
+        </div>
+        <div class="tui-right-header">Permissions</div>
+        <div class="tui-lsp" style="font-size:11px">
+          <span style="color:var(--green)">✔ read</span> <span style="color:var(--green)">✔ write</span> <span style="color:var(--orange)">● bash</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:var(--text3)">▲ Interactive replica — escribe un mensaje abajo. Prueba <span style="color:var(--text2)">/help</span>, <span style="color:var(--text2)">/init</span>, <span style="color:var(--text2)">Tab</span> para Plan mode</div>
+</section>
+
+<section class="features">
+  <div class="section-label">Capabilities</div>
+  <h2>What is OpenCode? <span>— everything you need</span></h2>
+  <p class="section-desc">OpenCode is an open source agent that helps you write code in your terminal, IDE, or desktop. Privacy-first, any model, any editor.</p>
+  <div class="feature-grid">
+    <div class="feature-card"><h3>LSP enabled</h3><p>Automatically loads the right LSPs for the LLM — pyright, typescript, gopls, rust-analyzer and more.</p><span class="tag">auto • zero-config</span></div>
+    <div class="feature-card"><h3>Multi-session</h3><p>Start multiple agents in parallel on the same project. Each session has isolated context and todo list.</p><span class="tag">parallel • isolated</span></div>
+    <div class="feature-card"><h3>Share links</h3><p>Share a link to any session for reference or to debug. Conversations are private by default.</p><span class="tag">/share • private</span></div>
+    <div class="feature-card"><h3>GitHub Copilot</h3><p>Log in with GitHub to use your Copilot account directly inside OpenCode.</p><span class="tag">oauth • copilot</span></div>
+    <div class="feature-card"><h3>ChatGPT Plus/Pro</h3><p>Log in with OpenAI to use your ChatGPT Plus or Pro account.</p><span class="tag">oauth • chatgpt</span></div>
+    <div class="feature-card"><h3>Any model</h3><p>75+ LLM providers through Models.dev, including local models via Ollama and LM Studio.</p><span class="tag">75+ providers</span></div>
+    <div class="feature-card"><h3>Any editor</h3><p>Terminal UI, desktop app, and IDE extension — same agent everywhere.</p><span class="tag">TUI • IDE • Web</span></div>
+    <div class="feature-card"><h3>Agent Skills</h3><p>Extend OpenCode with custom skills, tools, and MCP servers.</p><span class="tag">MCP • skills</span></div>
+    <div class="feature-card"><h3>Themes & keys</h3><p>Pick a theme, customize keybinds, formatters, permissions and policies.</p><span class="tag">configurable</span></div>
+  </div>
+</section>
+
+<section class="stats">
+  <div class="stat"><div><div class="stat-label">GitHub Stars</div><div class="stat-value">208K<small>★</small></div></div><div class="stat-fig">Fig 1.</div></div>
+  <div class="stat"><div><div class="stat-label">Contributors</div><div class="stat-value">950</div></div><div class="stat-fig">Fig 2.</div></div>
+  <div class="stat"><div><div class="stat-label">Monthly Devs</div><div class="stat-value">16M</div></div><div class="stat-fig">Fig 3.</div></div>
+</section>
+
+<div class="two-col">
+  <div>
+    <div class="section-label">Privacy</div>
+    <h2>Built for privacy first</h2>
+    <p>OpenCode does not store any of your code or context data, so that it can operate in privacy sensitive environments. Your code stays on your machine — we only proxy to your chosen LLM provider. Self-hostable, auditable, open source.<br><br><a href="#" style="color:var(--text);text-decoration:underline;text-underline-offset:4px">Learn about privacy →</a></p>
+  </div>
+  <div>
+    <div class="section-label">FAQ</div>
+    <div class="faq-item open"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is OpenCode?</div><div class="faq-a">OpenCode is an open source AI coding agent available as TUI, desktop app, and IDE extension. It helps you understand, plan, and build features with any LLM.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How do I use OpenCode?</div><div class="faq-a">Install with <code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:#1a1a1a;padding:2px 6px;border:1px solid #262626">curl -fsSL https://opencode.ai/install | bash</code> then run <code>opencode</code> in your project. Try <code>/init</code> to generate AGENTS.md.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Do I need extra AI subscriptions?</div><div class="faq-a">No — Zen includes free optimized models, or connect your existing Claude / GPT / Gemini keys. 75+ providers supported.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I only use OpenCode in the terminal?</div><div class="faq-a">No — use it in the terminal (TUI), desktop app, VS Code / JetBrains extensions, or web.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is OpenCode open source?</div><div class="faq-a">Yes — MIT licensed on GitHub. 208K stars, 950 contributors, 13K+ commits.</div></div>
+  </div>
+</div>
+
+<div style="max-width:1120px;margin:0 auto;padding:0 24px"><div class="zen">
+  <div>
+    <h3>Access reliable optimized models for coding agents</h3>
+    <p>Zen gives you handpicked AI models tested and benchmarked specifically for coding agents. Validated performance across providers.</p>
+  </div>
+  <button class="btn-primary" onclick="window.open('https://opencode.ai/zen','_blank')">Learn about Zen →</button>
+</div></div>
+
+<footer class="footer">
+  <div class="footer-left">
+    <span>© 2026 Anomaly</span>
+    <a href="https://github.com/anomalyco/opencode">GitHub [208K]</a>
+    <a href="#">Docs</a>
+    <a href="#">Changelog</a>
+    <a href="#">Discord</a>
+    <a href="#">X</a>
+    <a href="#">Brand</a>
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+  </div>
+  <div class="footer-right">English • Réplica interactiva hecha con ♥ — 100% open source UI</div>
+</footer>
+
+<script>
+// install tabs
+document.querySelectorAll('.install-tabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.install-tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('installCmd').textContent = btn.dataset.cmd;
+  });
+});
+function copyInstall(){
+  const t=document.getElementById('installCmd').textContent;
+  navigator.clipboard.writeText(t).then(()=>{
+    const b=document.getElementById('copyBtn');
+    b.textContent='Copied!';b.classList.add('copied');
+    setTimeout(()=>{b.textContent='Copy';b.classList.remove('copied')},1500);
+  });
+}
+
+// TUI logic
+const messagesEl=document.getElementById('messages');
+const inputEl=document.getElementById('tuiInput');
+const modeBtn=document.getElementById('modeBtn');
+const acEl=document.getElementById('ac');
+let mode='build';
+let history=[];
+let historyIdx=-1;
+
+const files=['jarvis.py','core/agent.py','core/llm.py','config.json','AGENTS.md','README.md','listener.py','proxy.py','core/tools.py'];
+const commands=[
+  {cmd:'/help',desc:'show help'},
+  {cmd:'/init',desc:'analyze project & create AGENTS.md'},
+  {cmd:'/undo',desc:'undo last change'},
+  {cmd:'/redo',desc:'redo last change'},
+  {cmd:'/share',desc:'create share link'},
+  {cmd:'/connect',desc:'connect LLM provider'},
+  {cmd:'/theme',desc:'change theme'},
+  {cmd:'/clear',desc:'clear messages'},
+  {cmd:'/plan',desc:'switch to Plan mode'},
+  {cmd:'/build',desc:'switch to Build mode'},
+];
+
+function toggleMode(){
+  mode = mode==='build'?'plan':'build';
+  modeBtn.textContent=mode.toUpperCase();
+  modeBtn.className='tui-mode '+mode;
+  addSystem(`Switched to ${mode.toUpperCase()} mode — ${mode==='plan'?'read-only, will propose a plan':'can make changes directly'}`);
+}
+
+function addSystem(text){
+  const el=document.createElement('div');
+  el.style.cssText="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#525252;text-align:center;padding:6px;border:1px dashed #262626;background:#0f0f0f;margin:4px 0";
+  el.textContent='◆ '+text;
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop=messagesEl.scrollHeight;
+}
+
+function addMessage(role,text,opts={}){
+  const wrap=document.createElement('div');
+  wrap.className='msg '+role;
+  const av=document.createElement('div');
+  av.className='msg-avatar';
+  av.textContent=role==='user'?'YOU':'OC';
+  const content=document.createElement('div');
+  content.className='msg-content';
+  const roleEl=document.createElement('div');
+  roleEl.className='msg-role';
+  roleEl.textContent=role==='user'?'you':'opencode • '+(mode==='plan'?'plan':'claude-4-sonnet');
+  const textEl=document.createElement('div');
+  textEl.className='msg-text';
+  textEl.innerHTML=text;
+  content.appendChild(roleEl);
+  content.appendChild(textEl);
+  if(opts.tool){
+    const tool=document.createElement('div');
+    tool.className='msg-tool';
+    tool.innerHTML=`<div class="msg-tool-header"><span class="dot ${opts.toolColor||'green'}"></span> ${opts.tool} <span style="margin-left:auto;color:#525252">${opts.toolMeta||''}</span></div><div class="msg-tool-body">${opts.toolBody||''}</div>`;
+    content.appendChild(tool);
+  }
+  wrap.appendChild(av);
+  wrap.appendChild(content);
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop=messagesEl.scrollHeight;
+  return textEl;
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// initial conversation
+addMessage('assistant','¡Hola! Soy <strong>OpenCode</strong> — tu agente de código open source.<br><br>Estoy listo en <code>~/projects/jarvis</code>. Puedo leer, editar y ejecutar tu código. Prueba:<br>• <code>How is authentication handled in @core/agent.py?</code><br>• Escribe <code>/init</code> para generar <code>AGENTS.md</code><br>• Usa <code>Tab</code> para cambiar a Plan mode');
+addMessage('user','How is authentication handled in <code>@core/agent.py</code>?');
+addMessage('assistant','Buscando en <code>core/agent.py</code> y <code>config.json</code>...<br><br>La autenticación usa <strong>API keys en .env</strong> y se valida en <code>listener.py:42</code>. Flujo:<br>1. <code>load_dotenv()</code> carga <code>OPENAI_API_KEY</code> / <code>ANTHROPIC_API_KEY</code><br>2. El proxy en <code>proxy.py:18</code> añade el header <code>Authorization</code><br><br>¿Quieres que añada autenticación a otra ruta?',{tool:'Read — core/agent.py',toolColor:'blue',toolMeta:'42 lines',toolBody:'<span class="line-num">38</span>def authenticate(request):\n<span class="line-num">39</span>    key = os.getenv("OPENAI_API_KEY")\n<span class="line-num">40</span>    if not key:\n<span class="line-num">41</span>        raise AuthError("Missing API key")\n<span class="line-num">42</span>    return validate(key, request.headers)'});
+
+// bot responses
+const replies={
+  '/help': ()=> addMessage('assistant','<strong>Comandos:</strong><br><code>/init</code> — crea AGENTS.md<br><code>/undo</code> — deshace último cambio<br><code>/redo</code> — rehace<br><code>/share</code> — link para compartir<br><code>/clear</code> — limpia<br><code>/plan</code> / <code>/build</code> — cambia modo<br><br><strong>Atajos:</strong> <code>@</code> menciona archivos, <code>Tab</code> Plan/Build, <code>Esc</code> undo'),
+  '/init': ()=> {
+    addMessage('assistant','Analizando proyecto...',{tool:'Agent — Explore',toolColor:'green',toolMeta:'scanning 12 files',toolBody:'✔ jarvis.py (327k)\n✔ core/ (3 files)\n✔ config.json\n✔ AGENTS.md — not found → will create'});
+    setTimeout(()=>addMessage('assistant','Creado <code>AGENTS.md</code> con estructura del proyecto, patrones y convenciones. ¡Deberías commitearlo!<br><br><code>AGENTS.md:1</code> — <em>JARVIS — Asistente de IA Personal...</em>',{tool:'Write — AGENTS.md',toolColor:'green',toolMeta:'+48 lines',toolBody:'<span class="diff-add"># AGENTS.md — JARVIS</span>\n<span class="diff-add">Este proyecto es un asistente personal en Python...</span>\n<span class="diff-add">Estructura: jarvis.py (core), listener.py (voz), proxy.py</span>'}),600);
+  },
+  '/share': ()=> addMessage('assistant','Link copiado: <code>https://opencode.ai/s/4XP1fce5</code> — la conversación es privada por defecto, compártela con tu equipo.'),
+  '/clear': ()=> {messagesEl.innerHTML=''; addSystem('Chat cleared');},
+  '/undo': ()=> addMessage('assistant','↩ Cambios revertidos. Mensaje restaurado. Puedes editar y reintentar.'),
+  '/redo': ()=> addMessage('assistant','↪ Cambios re-aplicados.'),
+  '/connect': ()=> addMessage('assistant','Ejecuta <code>/connect</code> → selecciona <code>opencode (Zen)</code> → ve a <code>opencode.ai/auth</code>, pega tu API key. También soporta GitHub Copilot y ChatGPT Plus.'),
+  '/theme': ()=> addMessage('assistant','Temas: <code>opencode</code> (default), <code>tokyo-night</code>, <code>catppuccin</code>, <code>github-dark</code>. Usa <code>/theme tokyo-night</code>'),
+  'default': (q)=>{
+    if(mode==='plan'){
+      addMessage('assistant',`Propuesta (PLAN mode — solo lectura):<br><br>1. <strong>Investigar</strong> <code>${esc(q).slice(0,80)}</code><br>2. Buscar archivos relevantes con LSP<br>3. Diseñar diff sin aplicarlo<br><br>¿Aprobado? Cambia a <strong>BUILD</strong> con <code>Tab</code> y di <em>"Go ahead"</em>`,{tool:'Plan — no writes',toolColor:'blue',toolMeta:'read-only',toolBody:'Files to read:\n • jarvis.py\n • core/agent.py\n • config.json\n\nRisk: low — no writes in Plan mode'});
+    } else {
+      const edits=[`\/\/ jarvis.py — patch\n<span class="diff-add">+ def handle_request(req):</span>\n<span class="diff-add">+     auth = authenticate(req)</span>\n<span class="diff-del">-     return process(req)</span>\n<span class="diff-add">+     return process(req, auth)</span>`];
+      addMessage('assistant',`Entendido — ejecutando <code>${esc(q).slice(0,90)}</code><br><br>Aplicando cambios:`,{tool:'Edit — jarvis.py',toolColor:'green',toolMeta:'+4 -1',toolBody:edits[0]});
+      setTimeout(()=>addMessage('assistant','✔ Cambios aplicados. ¿Quieres que ejecute tests con <code>pytest</code> o que cree un share link con <code>/share</code>?'),400);
+    }
+  }
+};
+
+function handleSubmit(raw){
+  const q=raw.trim();
+  if(!q) return;
+  history.push(q);historyIdx=history.length;
+  const safe=esc(q).replace(/@([\w\/\.\-]+)/g,'<code>@$1</code>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  // slash commands
+  if(q.startsWith('/')){
+    addMessage('user',safe);
+    const base=q.split(' ')[0].toLowerCase();
+    const fn=replies[base]||replies['default'];
+    setTimeout(()=>{ if(base!=='/clear' && base!=='/help' && !replies[base]) fn(q); else if(replies[base]) fn(); },200);
+    // typing indicator for default
+    if(!replies[base]){
+      showTypingThen(()=>fn(q));
+      return;
+    }
+    return;
+  }
+  addMessage('user',safe);
+  showTypingThen(()=>replies['default'](q));
+}
+
+function showTypingThen(fn){
+  const wrap=document.createElement('div');
+  wrap.className='msg assistant';
+  wrap.innerHTML=`<div class="msg-avatar">OC</div><div class="msg-content"><div class="msg-role">opencode • ${mode==='plan'?'plan':'claude-4-sonnet'}</div><div class="typing"><span></span><span></span><span></span></div></div>`;
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop=messagesEl.scrollHeight;
+  setTimeout(()=>{wrap.remove();fn();},700+Math.random()*400);
+}
+
+// autocomplete
+function updateAC(){
+  const v=inputEl.value;
+  const atMatch=v.slice(0,inputEl.selectionStart).match(/@([\w\/\.\-]*)$/);
+  const slashMatch=v.match(/^\/(\w*)$/);
+  if(atMatch){
+    const q=atMatch[1].toLowerCase();
+    const filtered=files.filter(f=>f.toLowerCase().includes(q)).slice(0,6);
+    if(filtered.length){showAC(filtered.map(f=>({label:f,sub:'file'})));} else hideAC();
+    return;
+  }
+  if(slashMatch){
+    const q=slashMatch[1].toLowerCase();
+    const filtered=commands.filter(c=>c.cmd.slice(1).startsWith(q));
+    showAC(filtered.map(c=>({label:c.cmd,sub:c.desc})));
+    return;
+  }
+  hideAC();
+}
+function showAC(items){
+  acEl.innerHTML=items.map((it,i)=>`<div class="ac-item ${i===0?'active':''}" data-val="${it.label}"><span>${it.label}</span><span style="color:#525252">${it.sub}</span></div>`).join('');
+  acEl.style.display='block';
+  acEl.querySelectorAll('.ac-item').forEach(el=>el.addEventListener('click',()=>{
+    const val=el.dataset.val;
+    if(val.startsWith('/')) inputEl.value=val+' ';
+    else {
+      const pos=inputEl.selectionStart;
+      const before=inputEl.value.slice(0,pos);
+      const after=inputEl.value.slice(pos);
+      inputEl.value=before.replace(/@[\w\/\.\-]*$/,val+' ')+after;
+    }
+    hideAC();inputEl.focus();
+  }));
+}
+function hideAC(){acEl.style.display='none'}
+
+inputEl.addEventListener('input',updateAC);
+inputEl.addEventListener('keydown',e=>{
+  if(acEl.style.display==='block'){
+    const active=acEl.querySelector('.ac-item.active');
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();
+      const items=[...acEl.querySelectorAll('.ac-item')];
+      let idx=items.indexOf(active);
+      idx+=e.key==='ArrowDown'?1:-1;
+      if(idx<0) idx=items.length-1;
+      if(idx>=items.length) idx=0;
+      items.forEach(i=>i.classList.remove('active'));
+      items[idx].classList.add('active');
+    } else if(e.key==='Tab'||e.key==='Enter'){
+      if(active){e.preventDefault();active.click();return;}
+    } else if(e.key==='Escape'){hideAC();return}
+  }
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    const v=inputEl.value;
+    inputEl.value='';hideAC();
+    handleSubmit(v);
+  } else if(e.key==='Tab'){
+    e.preventDefault();toggleMode();
+  } else if(e.key==='ArrowUp' && inputEl.value===''){
+    if(historyIdx>0){historyIdx--;inputEl.value=history[historyIdx];}
+  } else if(e.key==='ArrowDown' && history.length){
+    if(historyIdx<history.length-1){historyIdx++;inputEl.value=history[historyIdx];} else {historyIdx=history.length;inputEl.value='';}
+  } else if(e.key==='Escape'){
+    handleSubmit('/undo');
+  }
+});
+inputEl.addEventListener('blur',()=>setTimeout(hideAC,150));
+
+// file click
+document.querySelectorAll('.tui-file').forEach(el=>el.addEventListener('click',()=>{
+  document.querySelectorAll('.tui-file').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  const name=el.textContent.trim();
+  addMessage('user',`Explícame <code>@${name}</code>`);
+  showTypingThen(()=>addMessage('assistant',`Analizando <code>${name}</code>...<br><br>Archivo con ${Math.floor(Math.random()*200+20)} líneas. Usa LSP <strong>${name.endsWith('.py')?'pyright':'ts'}</strong> para contexto.`,{tool:`Read — ${name}`,toolColor:'blue',toolMeta:'read',toolBody:`<span class="line-num">1</span> // ${name}\n<span class="line-num">2</span> import os\n<span class="line-num">3</span> ...`}));
+}));
+
+// PWA: register service worker for offline
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+// keyboard focus
+window.addEventListener('load',()=>inputEl.focus());
+</script>
+</body>
+</html>
