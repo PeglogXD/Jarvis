@@ -1,0 +1,1 @@
+﻿{ "provider": "nvidia", "model": "nvidia/nemotron-3-super-120b-a12b", "workspace": "C:/Jarvis/opencode-web", "permissions": { "read": "allow", "edit": "ask", "bash": "ask", "web": "allow" }, "mode": "build", "maxSteps": 40, "temperature": 0.1 }

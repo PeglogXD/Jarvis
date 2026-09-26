@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>opencode — the open source AI coding agent</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23080808'/><rect x='7' y='13' width='6' height='6' fill='%23CFCECD'/><rect x='13' y='13' width='12' height='6' fill='none' stroke='%23F1ECEC'/></svg>">
+</head>
+<body>
+<div id="app">
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 234 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 30H6V18H18V30Z" fill="#CFCECD"/><path d="M18 12H6V30H18V12ZM24 36H0V6H24V36Z" fill="#656363"/>
+      <path d="M48 30H36V18H48V30Z" fill="#CFCECD"/><path d="M36 30H48V12H36V30ZM54 36H36V42H30V6H54V36Z" fill="#656363"/>
+      <path d="M84 24V30H66V24H84Z" fill="#CFCECD"/><path d="M84 24H66V30H84V36H60V6H84V24ZM66 18H78V12H66V18Z" fill="#656363"/>
+      <path d="M108 36H96V18H108V36Z" fill="#CFCECD"/><path d="M108 12H96V36H90V6H108V12ZM114 36H108V12H114V36Z" fill="#656363"/>
+      <path d="M144 30H126V18H144V30Z" fill="#CFCECD"/><path d="M144 12H126V30H144V36H120V6H144V12Z" fill="#F1ECEC"/>
+      <path d="M168 30H156V18H168V30Z" fill="#CFCECD"/><path d="M168 12H156V30H168V12ZM174 36H150V6H174V36Z" fill="#F1ECEC"/>
+      <path d="M198 30H186V18H198V30Z" fill="#CFCECD"/><path d="M198 12H186V30H198V12ZM204 36H180V6H198V0H204V36Z" fill="#F1ECEC"/>
+      <path d="M234 24V30H216V24H234Z" fill="#CFCECD"/><path d="M216 12V18H228V12H216ZM234 24H216V30H234V36H210V6H234V24Z" fill="#F1ECEC"/>
+    </svg>
+    <span class="dot" id="live"></span>
+  </div>
+  <select class="sel" id="provSel" title="Provider"></select>
+  <select class="sel" id="modelSel" title="Model"></select>
+  <span class="pill" id="modePill">build</span>
+  <span class="pill" id="ctxPill" title="Tokens used">0 tok</span>
+  <span class="grow"></span>
+  <button class="iconbtn" id="undoBtn" title="Undo last change (undo)">undo</button>
+  <button class="iconbtn" id="stopBtn" title="Interrupt (Ctrl+C)" disabled>stop</button>
+  <button class="iconbtn" id="newBtn" title="New session (Ctrl+N)">+ new</button>
+  <button class="iconbtn hide-sm" id="permBtn" title="Permissions">perms</button>
+  <button class="iconbtn hide-sm" id="setBtn" title="Settings">settings</button>
+</header>
+
+<main>
+  <aside class="left">
+    <div class="pane-head">
+      <span>Sessions</span>
+      <span style="display:flex;gap:5px">
+        <button id="refreshSess" title="Refresh">↻</button>
+      </span>
+    </div>
+    <div class="sessions" id="sessions"></div>
+    <div class="pane-head">
+      <span>Explorer</span>
+      <span id="wsLabel" style="text-transform:none;letter-spacing:0;color:var(--tx6)"></span>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+
+  <section class="center">
+    <div class="msgs" id="msgs"></div>
+    <div class="composer">
+      <div class="acwrap">
+        <div id="ac"></div>
+        <div class="cbox">
+          <button class="modebtn build" id="modeBtn" title="Tab — toggle Plan / Build">build</button>
+          <textarea id="prompt" rows="1" placeholder="Ask anything. @ mentions files, / runs commands."></textarea>
+          <button class="iconbtn" id="sendBtn" title="Send (Enter)">send ↵</button>
+        </div>
+      </div>
+      <div class="sendrow">
+        <span class="hint"><kbd>Tab</kbd> plan/build</span>
+        <span class="hint"><kbd>@</kbd> file</span>
+        <span class="hint"><kbd>/</kbd> command</span>
+        <span class="hint"><kbd>↑</kbd> history</span>
+        <span class="hint"><kbd>Ctrl</kbd><kbd>C</kbd> stop</span>
+        <span class="grow" style="flex:1"></span>
+        <span class="hint" id="statusHint">ready</span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="right">
+    <div class="pane-head"><span>Todos</span><span id="todoCount">0/0</span></div>
+    <div id="todos" style="max-height:44%;overflow-y:auto;flex-shrink:0"></div>
+    <div class="pane-head"><span>Workspace</span></div>
+    <div id="wsinfo"></div>
+    <div class="pane-head"><span>Permissions</span></div>
+    <div id="perms" style="padding:9px 11px"></div>
+  </aside>
+</main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <div class="sh"><b id="mTitle">Settings</b><button class="iconbtn" id="mClose">close</button></div>
+    <div class="sb" id="mBody"></div>
+    <div class="sf" id="mFoot"></div>
+  </div>
+</div>
+
+<div class="omask" id="omask"><div>opening file…</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
