@@ -9,9 +9,9 @@ services:
     envVars:
       - key: IA_PROVIDERS
         value: gemini,nvidia
-      - key: GEMINI_API_KEY
+      - key: AQ.Ab8RN6LL4otKHTTcDXDgxJndYZxcQKcap_wSZlfBabo6cgLuYg
         sync: false
-      - key: NVIDIA_API_KEY
+      - key: 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
         sync: false
       - key: JARVIS_API_TOKEN
         generateValue: true
